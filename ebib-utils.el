@@ -245,13 +245,23 @@ mode line of the entry buffer is not changed."
   :group 'ebib-windows
   :type 'string)
 
-(defcustom ebib-index-display-fields nil
-  "List of the fields to display in the index buffer.
-By default, the index buffer only shows the entry key of each
-entry.  If this provides too little information, you can have Ebib
-add the contents of certain fields to the index buffer."
+;; (defcustom ebib-index-display-fields nil
+;;   "List of the fields to display in the index buffer.
+;; By default, the index buffer only shows the entry key of each
+;; entry.  If this provides too little information, you can have Ebib
+;; add the contents of certain fields to the index buffer."
+;;   :group 'ebib
+;;   :type '(repeat (string :tag "Index Field")))
+
+(defcustom ebib-index-fields '[("Key" 40 t)
+                               ("Author" 40 t)
+                               ("Year" 6 t)
+                               ("Title" 50 t)]
+  "Fields to display in the index buffer."
   :group 'ebib
-  :type '(repeat (string :tag "Index Field")))
+  :type '(vector (list  (string :tag "Field")
+                        (integer :tag "Width")
+                        (boolean :tag "Sort"))))
 
 (defcustom ebib-uniquify-keys nil
   "Create unique keys.
@@ -276,13 +286,13 @@ documentation for details."
   :type 'boolean)
 
 (defcustom ebib-citation-commands '((any
-                                 (("cite" "\\cite%<[%A]%>{%K}")))
-                                (org-mode
-                                 (("ebib" "[[ebib:%K][%D]]")))
-                                (markdown-mode
-                                 (("text" "@%K%< [%A]%>")
-                                  ("paren" "[%(%<%A %>@%K%<, %A%>%; )]")
-                                  ("year" "[-@%K%< %A%>]"))))
+                                     (("cite" "\\cite%<[%A]%>{%K}")))
+                                    (org-mode
+                                     (("ebib" "[[ebib:%K][%D]]")))
+                                    (markdown-mode
+                                     (("text" "@%K%< [%A]%>")
+                                      ("paren" "[%(%<%A %>@%K%<, %A%>%; )]")
+                                      ("year" "[-@%K%< %A%>]"))))
   "A list of format strings to insert a citation into a buffer.
 This option defines the citation commands that you can use when
 inserting a citation key into a buffer (with
@@ -674,10 +684,6 @@ Ebib (not Emacs)."
 
 (defgroup ebib-faces nil "Faces for Ebib" :group 'ebib)
 
-(defface ebib-overlay-face '((t (:inherit highlight)))
-  "Face used for the overlays."
-  :group 'ebib-faces)
-
 (defface ebib-crossref-face '((t (:inherit font-lock-comment-face)))
   "Face used to indicate values inherited from crossreferenced entries."
   :group 'ebib-faces)
@@ -731,9 +737,6 @@ Currently, the following problems are marked:
   "List of entry type aliases for Biblatex.")
 
 (defvar ebib--buffer-alist nil "Alist of Ebib buffers.")
-(defvar ebib--index-overlay nil "Overlay to mark the current entry.")
-(defvar ebib--fields-overlay nil "Overlay to mark the current field.")
-(defvar ebib--strings-overlay nil "Overlay to mark the current string.")
 
 ;; general bookkeeping
 (defvar ebib--field-history nil "Minibuffer field name history.")
@@ -920,42 +923,6 @@ function adds a newline to the message being logged."
                                       format-string)
                                     "\n")
                    args))))
-
-(defun ebib--make-overlay (begin end buffer)
-  "Create an overlay from BEGIN to END in BUFFER."
-  (let (overlay)
-    (setq overlay (make-overlay begin end buffer))
-    (overlay-put overlay 'face 'ebib-overlay-face)
-    overlay))
-
-(defun ebib--set-index-overlay ()
-  "Set the overlay of the index buffer."
-  (with-current-ebib-buffer 'index
-    (beginning-of-line)
-    (let ((beg (point)))
-      (if ebib-index-display-fields
-          (end-of-line)
-        (skip-chars-forward "^ "))
-      (move-overlay ebib--index-overlay beg (point) (cdr (assq 'index ebib--buffer-alist)))
-      (beginning-of-line))))
-
-(defun ebib--set-fields-overlay ()
-  "Set the overlay in the fields buffer."
-  (with-current-ebib-buffer 'entry
-    (beginning-of-line)
-    (save-excursion
-      (let ((beg (point)))
-        (ebib--looking-at-goto-end "[^ \t\n\f]*")
-        (move-overlay ebib--fields-overlay beg (point))))))
-
-(defun ebib--set-strings-overlay ()
-  "Set the overlay in the strings buffer."
-  (with-current-ebib-buffer 'strings
-    (beginning-of-line)
-    (save-excursion
-      (let ((beg (point)))
-        (ebib--looking-at-goto-end "[^ \t\n\f]*")
-        (move-overlay ebib--strings-overlay beg (point))))))
 
 ;; This is simply to save some typing.
 (defsubst ebib--cur-entry-key ()
